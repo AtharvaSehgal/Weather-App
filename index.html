@@ -220,7 +220,8 @@
                         <div class="day">
                             <h3>${date}</h3>
                             <img src="${iconUrl}" alt="${day.weather[0].description}">
-                            <p>Temp: ${day.temp.day}°C</p>
+                            <p>High: ${day.temp.max}°C</p>
+                            <p>Low: ${day.temp.min}°C</p>
                             <p>${day.weather[0].description}</p>
                         </div>
                     `;
