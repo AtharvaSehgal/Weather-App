@@ -1,0 +1,481 @@
+<html>
+
+<head>
+    <title>Weather App</title>
+    <link rel="icon" type="image/png" href="images/cropped_image.png">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to bottom, #87CEEB, #4682B4);
+            color: white;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 1.5em;
+        }
+
+        .header input {
+            padding: 8px;
+            border-radius: 20px;
+            border: none;
+            outline: none;
+        }
+
+        .header button {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 20px;
+            background-color: orange;
+            color: white;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            animation: bounceIn 0.6s ease-out;
+            /* Bounce-in animation */
+        }
+
+        .header button:hover {
+            background-color: darkorange;
+            transform: scale(1.1);
+            /* Slightly enlarge on hover */
+        }
+
+        .header button:active {
+            transform: scale(0.95);
+            /* Shrink slightly on click */
+        }
+
+        .weather-box {
+            margin: 20px auto;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transform: scale(0.8);
+            /* Start smaller */
+            animation: zoomIn 0.5s ease-out forwards;
+            /* Zoom-in animation */
+        }
+
+        .weather-box h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .weather-box img {
+            width: 80px;
+            height: 80px;
+        }
+
+        .forecast-box {
+            margin: 20px auto;
+            padding: 10px;
+            width: 90%;
+            max-width: 600px;
+            overflow-x: auto;
+            display: flex;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(50px);
+            /* Start below */
+            animation: slideUp 0.6s ease-out 0.5s forwards;
+            /* Slide-up animation with delay */
+        }
+
+        .forecast-box .day {
+            flex: 0 0 auto;
+            width: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            text-align: center;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .forecast-box .day img {
+            width: 50px;
+            height: 50px;
+        }
+
+        .forecast-box .day h3 {
+            font-size: 0.9em;
+            margin: 5px 0;
+        }
+
+        .forecast-box .day p {
+            font-size: 0.8em;
+            margin: 2px 0;
+        }
+
+        #forecastChart {
+            margin: 20px auto;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        /* Keyframes for fade-in animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Keyframes for slide-in animation */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Keyframes for sliding in from the left */
+        @keyframes slideInFromLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Keyframes for sliding in from the right */
+        @keyframes slideInFromRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Keyframes for Bounce-in Animation */
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            60% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Keyframes for Zoom-in Animation */
+        @keyframes zoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Keyframes for Slide-up Animation */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <header class="header">
+        <div id="headerWeather">Loading weather...</div> <!-- Added this line -->
+        <div>
+            <input type="text" id="city" placeholder="Enter city name">
+            <button id="getWeather">Search</button>
+        </div>
+    </header>
+    <div class="weather-box" id="weatherResult">
+        <!-- Weather details will be dynamically inserted here -->
+    </div>
+    <div class="forecast-box" id="forecastResult">
+        <!-- Forecast details will be dynamically inserted here -->
+    </div>
+    <canvas id="forecastChart"></canvas>
+    <script>
+        let forecastChartInstance;
+
+        function updateBackground(weatherCondition) {
+            const body = document.body;
+            const headerWeather = document.getElementById('headerWeather');
+            const weatherResult = document.getElementById('weatherResult');
+            const forecastResult = document.getElementById('forecastResult');
+
+            body.style.backgroundSize = "cover";
+            body.style.backgroundRepeat = "no-repeat";
+            body.style.backgroundPosition = "center";
+            body.style.backgroundAttachment = "fixed"; // Ensures the background stays fixed during scrolling
+
+            switch (weatherCondition.toLowerCase()) {
+                case 'clear':
+                    body.style.backgroundImage = "url('images/clear-sky.jpg')"; // Clear sky
+                    body.style.color = "black"; // Dark text for light background
+                    headerWeather.style.color = "orange";
+                    break;
+                case 'clouds':
+                    body.style.backgroundImage = "url('images/cloudy.jpg')"; // Cloudy
+                    body.style.color = "black"; // Light text for dark background
+                    headerWeather.style.color = "orange";
+                    break;
+                case 'rain':
+                case 'drizzle':
+                    body.style.backgroundImage = "url('images/rainy.jpg')"; // Rainy
+                    body.style.color = "white"; // Light text for dark background
+                    headerWeather.style.color = "white";
+                    break;
+                case 'thunderstorm':
+                    body.style.backgroundImage = "url('images/thunderstorm.jpg')"; // Thunderstorm
+                    body.style.color = "white"; // Light text for dark background
+                    headerWeather.style.color = "white";
+                    break;
+                case 'snow':
+                    body.style.backgroundImage = "url('images/snowy.jpg')"; // Snowy
+                    body.style.color = "black"; // Dark text for light background
+                    headerWeather.style.color = "orange";
+                    break;
+                case 'mist':
+                case 'fog':
+                    body.style.backgroundImage = "url('images/misty.jpg')"; // Misty/Foggy
+                    body.style.color = "black"; // Light text for dark background
+                    headerWeather.style.color = "blck";
+                    break;
+                default:
+                    body.style.backgroundImage = "url('images/default.jpg')"; // Default
+                    body.style.color = "black"; // Default text color
+                    headerWeather.style.color = "black";
+            }
+
+            // Ensure weatherResult and forecastResult text colors adapt
+            weatherResult.style.color = body.style.color;
+            forecastResult.style.color = body.style.color;
+        }
+
+        async function fetchWeatherByLocation(lat, lon) {
+            try {
+                const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+                const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`);
+                if (!response.ok) {
+                    throw new Error('Unable to fetch weather for your location');
+                }
+                const data = await response.json();
+                const weatherCondition = data.weather[0].main; // Get the main weather condition
+                updateBackground(weatherCondition); // Update background based on weather condition
+                const iconUrl = `http://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+                document.getElementById('headerWeather').innerText = `Weather in ${data.name}: ${data.main.temp}°C, ${data.weather[0].description}`;
+                document.getElementById('headerWeather').style.color = 'orange';
+                document.getElementById('weatherResult').innerHTML = `
+                    <div class="weather-box">
+                        <h1>Weather in ${data.name}</h1>
+                        <img src="${iconUrl}" alt="${data.weather[0].description}">
+                        <h3>Temperature: <span style="color: orange;">${data.main.temp}°C</span></h3>
+                        <h3>Condition: ${data.weather[0].description}</h3>
+                        <hr>
+                        <p>Feels like: ${data.main.feels_like}°C | Humidity: ${data.main.humidity}%</p>
+                    </div>
+                `;
+
+                // Fetch 10-day forecast for the current location
+                fetch10DayForecast(data.name);
+            } catch (error) {
+                document.getElementById('weatherResult').innerHTML = `<p style="color: red;">${error.message}</p>`;
+            }
+        }
+
+        async function fetch10DayForecast(city) {
+            try {
+                const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+                const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast/daily?q=${city}&cnt=10&appid=${apiKey}&units=metric`);
+                if (!response.ok) {
+                    throw new Error('Unable to fetch 10-day forecast');
+                }
+                const data = await response.json();
+
+
+                const labels = data.list.map(day =>
+                    new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                );
+                const temperatures = data.list.map(day => day.temp.day);
+
+
+                renderForecastChart(labels, temperatures);
+
+
+                const forecastHtml = data.list.map(day => {
+                    const date = new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    const iconUrl = `http://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`;
+                    return `
+                        <div class="day">
+                            <h3>${date}</h3>
+                            <img src="${iconUrl}" alt="${day.weather[0].description}">
+                            <p>Highest temp: ${day.temp.max}°C</p>
+                            <p>Lowest temp: ${day.temp.min}°C</p>
+                            <p>${day.weather[0].description}</p>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('forecastResult').innerHTML = `
+                    <div class="forecast-box">
+                        <h2>10-Day Forecast for ${data.city.name}</h2>
+                        ${forecastHtml}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('forecastResult').innerHTML = `<p style="color: red;">${error.message}</p>`;
+            }
+        }
+
+        function renderForecastChart(labels, temperatures) {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+
+            // Destroy the existing chart instance if it exists
+            if (forecastChartInstance) {
+                forecastChartInstance.destroy();
+            }
+
+            // Create a new chart instance
+            forecastChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: temperatures,
+                        borderColor: 'orange',
+                        backgroundColor: 'rgba(255, 165, 0, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            },
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        fetchWeatherByLocation(latitude, longitude);
+                    },
+                    (error) => {
+                        alert('Unable to retrieve your location. Please enter a city name.');
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by your browser.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            getLocation(); // Automatically fetch weather and forecast for the current location on page load
+
+            document.getElementById('getWeather').addEventListener('click', async () => {
+                const city = document.getElementById('city').value;
+                if (!city) {
+                    alert('Please enter a city name');
+                    return;
+                }
+
+                try {
+                    const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+                    const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
+                    if (!response.ok) {
+                        throw new Error('City not found');
+                    }
+                    const data = await response.json();
+                    const weatherCondition = data.weather[0].main; // Get the main weather condition
+                    updateBackground(weatherCondition); // Update background based on weather condition
+                    const iconUrl = `http://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+                    document.getElementById('weatherResult').innerHTML = `
+                        <div class="weather-box">
+                            <h1>Weather in ${data.name}</h1>
+                            <img src="${iconUrl}" alt="${data.weather[0].description}">
+                            <h3>Temperature: <span style="color: orange;">${data.main.temp}°C</span></h3>
+                            <h3>Condition: ${data.weather[0].description}</h3>
+                            <hr>
+                            <p>Feels like: ${data.main.feels_like}°C | Humidity: ${data.main.humidity}%</p>
+                        </div>
+                    `;
+
+                    // Fetch 10-day forecast for the searched city
+                    fetch10DayForecast(city);
+                } catch (error) {
+                    document.getElementById('weatherResult').innerHTML = `<p style="color: red;">${error.message}</p>`;
+                }
+
+
+                fetch10DayForecast(city);
+            });
+        });
+    </script>
+</body>
+
+</html>
